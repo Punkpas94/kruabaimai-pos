@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🌿 ระบบ POS ร้านครัวใบไม้</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+theme: {
+extend: {
+fontFamily: { sans: ['Kanit', 'sans-serif'] },
+colors: {
+brand: { 50: '#f2fcf5', 100: '#e8f5e9', 500: '#4CAF50', 600: '#43A047', 800: '#2E7D32' }
+}
+}
+}
+}
+</script>
+<style>
+::-webkit-scrollbar { width: 0px; background: transparent; }
+.menu-card { transition: transform 0.1s ease-in-out; }
+.menu-card:active { transform: scale(0.95); border-color: #4CAF50; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.animate-fade-in { animation: fadeIn 0.2s ease-out forwards; }
+.animate-slide-up { animation: slideUp 0.3s ease-out forwards; }
+
+/* Toggle Switch Customization */
+.toggle-checkbox:checked { right: 0; border-color: #4CAF50; }
+.toggle-checkbox:checked + .toggle-label { background-color: #4CAF50; }
+</style>
+</head>
+<body class="bg-gray-100 flex justify-center text-gray-800">
+
+<div class="w-full max-w-md bg-brand-50 min-h-screen relative shadow-2xl flex flex-col">
+
+<!-- Header -->
+<header class="bg-brand-500 text-white rounded-b-3xl shadow-md p-5 pb-6 z-10 relative">
+<div class="flex justify-between items-center">
+<div>
+<h1 class="text-2xl font-semibold">🌿 ร้านครัวใบไม้</h1>
+<p class="text-brand-100 text-sm mt-1" id="header-subtitle">ระบบรับออเดอร์</p>
+</div>
+<button onclick="toggleView()" id="view-toggle-btn" class="bg-white/20 hover:bg-white/30 px-3 py-2 rounded-xl text-sm font-medium backdrop-blur-sm transition flex items-center gap-1">
+<span>📊</span> <span id="view-toggle-text">ยอดขาย</span>
+</button>
+</div>
+</header>
+
+<!-- =================== หน้าจอรับออเดอร์ (POS View) =================== -->
+<main id="pos-view" class="flex-1 overflow-y-auto pb-40 pt-4 px-4">
+<h2 class="text-brand-800 font-semibold text-lg mb-3 px-1">เมนูราดข้าว 🍛</h2>
+<div class="grid grid-cols-2 gap-3 mb-6" id="rice-menu-container"></div>
+
+<h2 class="text-brand-800 font-semibold text-lg mb-3 px-1">เมนูกับข้าว 🍲</h2>
+<div class="grid grid-cols-2 gap-3 mb-4" id="side-menu-container"></div>
+</main>
+
+<!-- แถบตะกร้าสินค้า -->
+<div id="cart-bar" class="fixed bottom-0 w-full max-w-md bg-white rounded-t-3xl shadow-[0_-5px_15px_rgba(0,0,0,0.05)] border-t-4 border-brand-500 p-5 z-20 transition-transform duration-300 transform translate-y-0">
+<div class="flex justify-between items-end mb-3">
+<div class="text-gray-500 text-sm">
+รวม <span id="cart-count" class="font-bold text-brand-500 text-lg mx-1">0</span> รายการ
+</div>
+<div class="text-right">
+<div class="text-xs text-gray-400 mb-[-4px]">ยอดชำระ</div>
+<div class="text-2xl font-bold text-red-500">฿<span id="cart-total">0</span></div>
+</div>
+</div>
+
+<div id="cart-items-container" class="max-h-32 overflow-y-auto mb-3 space-y-2 hidden">
+<ul id="cart-list" class="text-sm divide-y divide-gray-100"></ul>
+</div>
+
+<div class="flex gap-2">
+<button onclick="toggleCartItems()" id="toggle-cart-btn" class="hidden bg-gray-100 text-gray-600 px-4 py-3 rounded-xl font-medium hover:bg-gray-200 transition items-center justify-center">
+<span id="toggle-cart-icon">▲</span>
+</button>
+<button onclick="openCheckoutModal()" class="flex-1 bg-brand-500 text-white py-3 rounded-xl font-semibold text-lg hover:bg-brand-600 active:scale-95 transition shadow-md flex justify-center items-center gap-2">
+🛒 ยืนยันออเดอร์
+</button>
+</div>
+</div>
+
+<!-- =================== หน้าจอยอดขาย (Dashboard View) =================== -->
+<main id="dashboard-view" class="flex-1 overflow-y-auto pt-4 px-4 pb-10 hidden">
+
+<!-- สรุปภาพรวม (นับเฉพาะบิลที่จ่ายแล้ว) -->
+<div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-5 mb-5 text-center relative overflow-hidden">
+<div class="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
+<h2 class="text-gray-500 text-sm font-medium mb-1">ยอดขายรวมวันนี้ (ชำระแล้ว)</h2>
+<div class="text-4xl font-bold text-brand-600 mb-4">฿<span id="dash-total-sales">0</span></div>
+
+<div class="grid grid-cols-2 gap-4 border-t border-gray-100 pt-4">
+<div class="bg-orange-50 p-2 rounded-lg">
+<div class="text-orange-600/70 text-xs mb-1 font-medium">ต้นทุนรวม</div>
+<div class="text-xl font-bold text-orange-600">฿<span id="dash-total-cost">0</span></div>
+</div>
+<div class="bg-green-50 p-2 rounded-lg">
+<div class="text-green-600/70 text-xs mb-1 font-medium">กำไรสุทธิ</div>
+<div class="text-xl font-bold text-green-600">฿<span id="dash-total-profit">0</span></div>
+</div>
+</div>
+
+<!-- ยอดค้างชำระ -->
+<div class="mt-4 text-xs text-red-500 font-medium bg-red-50 p-2 rounded-lg hidden" id="pending-payment-box">
+มีบิลค้างชำระรวม ฿<span id="dash-pending-sales">0</span>
+</div>
+</div>
+
+<!-- สรุปยอดขายแยกตามเมนู -->
+<div class="mb-6">
+<h3 class="font-semibold text-brand-800 mb-3 px-1 flex items-center gap-2">
+<span>📈</span> สรุปยอดขายแยกตามเมนู
+</h3>
+<div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+<div id="item-summary-list" class="divide-y divide-gray-100">
+<div class="text-center text-gray-400 text-sm py-6" id="empty-item-summary">ยังไม่มีข้อมูลการขาย</div>
+</div>
+</div>
+</div>
+
+<!-- ประวัติออเดอร์ -->
+<div class="flex justify-between items-center mb-3 px-1">
+<h3 class="font-semibold text-brand-800 flex items-center gap-2">
+<span>🧾</span> ประวัติบิลวันนี้
+</h3>
+<span class="text-xs bg-gray-200 text-gray-600 px-2 py-1 rounded-full"><span id="dash-order-count">0</span> บิล</span>
+</div>
+
+<div id="order-history" class="space-y-3">
+<div class="text-center text-gray-400 text-sm py-10" id="empty-history">ยังไม่มีออเดอร์ในวันนี้</div>
+</div>
+
+<button onclick="clearHistory()" class="w-full mt-8 bg-red-50 text-red-500 py-3 rounded-xl font-medium text-sm hover:bg-red-100 transition border border-red-100">
+🗑️ ล้างข้อมูลยอดขายวันนี้ (Reset)
+</button>
+</main>
+
+<!-- =================== Modal ยืนยันออเดอร์และใส่ชื่อลูกค้า =================== -->
+<div id="checkout-modal" class="fixed inset-0 bg-black/50 z-50 hidden justify-center items-end px-0 sm:px-4 pb-0 sm:pb-4 backdrop-blur-sm">
+<div id="checkout-modal-content" class="bg-white rounded-t-3xl sm:rounded-2xl w-full max-w-md overflow-hidden shadow-2xl transform translate-y-full transition-all duration-300">
+<div class="p-6">
+<div class="flex justify-between items-center mb-4">
+<h2 class="text-xl font-semibold text-gray-800">ยืนยันออเดอร์</h2>
+<button onclick="closeCheckoutModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+</div>
+
+<!-- รายละเอียดบิล -->
+<div class="bg-gray-50 rounded-xl p-4 mb-4 text-sm text-gray-600 whitespace-pre-line max-h-32 overflow-y-auto" id="checkout-summary-text">
+<!-- สรุปรายการถูกสร้างด้วย JS -->
+</div>
+
+<div class="flex justify-between items-center mb-6 border-b border-gray-100 pb-4">
+<span class="font-medium text-gray-600">ยอดชำระทั้งหมด:</span>
+<span class="text-2xl font-bold text-red-500">฿<span id="checkout-total-price">0</span></span>
+</div>
+
+<!-- ส่วนกรอกชื่อลูกค้า -->
+<div class="mb-5">
+<label class="block text-sm font-medium text-gray-700 mb-2">ชื่อลูกค้า (ตัวเลือก)</label>
+<div class="flex gap-2">
+<input type="text" id="customer-name" placeholder="ระบุชื่อลูกค้า / เลขห้อง..." class="flex-1 border border-gray-300 rounded-xl px-4 py-2 focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition">
+<button type="button" onclick="document.getElementById('customer-name').value = 'ไม่ระบุชื่อ'" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-xl text-xs font-medium whitespace-nowrap hover:bg-gray-200 transition">
+ไม่ระบุ
+</button>
+</div>
+</div>
+
+<!-- สถานะการชำระเงิน (Toggle) -->
+<div class="flex items-center justify-between bg-gray-50 p-3 rounded-xl mb-6 border border-gray-100">
+<div class="font-medium text-gray-700">สถานะการชำระเงิน</div>
+<label for="payment-toggle" class="flex items-center cursor-pointer">
+<!-- toggle text -->
+<div class="mr-3 text-sm font-semibold" id="payment-status-text" style="color: #4CAF50;">ชำระเงินแล้ว 🟢</div>
+<!-- toggle switch -->
+<div class="relative">
+<input type="checkbox" id="payment-toggle" class="sr-only toggle-checkbox" checked onchange="updatePaymentToggleText()">
+<div class="block bg-gray-300 w-12 h-7 rounded-full toggle-label transition-colors duration-300"></div>
+<div class="dot absolute left-1 top-1 bg-white w-5 h-5 rounded-full transition transform duration-300"></div>
+</div>
+</label>
+</div>
+
+<style>
+input:checked ~ .dot { transform: translateX(100%); }
+input:checked ~ .toggle-label { background-color: #4CAF50; }
+</style>
+
+<button onclick="confirmOrder()" class="w-full bg-brand-500 text-white py-4 rounded-xl font-semibold text-lg hover:bg-brand-600 active:scale-95 transition shadow-md">
+บันทึกออเดอร์
+</button>
+</div>
+</div>
+</div>
+
+<!-- =================== Custom Alert Modal =================== -->
+<div id="alert-modal" class="fixed inset-0 bg-black/50 z-[60] hidden justify-center items-center px-4 backdrop-blur-sm">
+<div id="alert-content" class="bg-white rounded-2xl w-full max-w-xs overflow-hidden shadow-2xl transform scale-95 opacity-0 transition-all duration-200">
+<div id="alert-header" class="bg-brand-500 p-4 text-center text-white font-semibold text-lg">ข้อความ</div>
+<div id="alert-body" class="p-6 text-center text-gray-600 whitespace-pre-line text-sm">รายละเอียด...</div>
+<div class="p-4 pt-0" id="alert-actions"></div>
+</div>
+</div>
+
+</div>
+
+<script>
+// --- ข้อมูลเมนูอาหาร ---
+const menuItems = [
+{ id: 'r1', name: 'ข้าวหมู', price: 60, cost: 36, profit: 24, icon: '🐷', type: 'rice' },
+{ id: 'r2', name: 'ข้าวไก่', price: 60, cost: 35, profit: 25, icon: '🍗', type: 'rice' },
+{ id: 'r3', name: 'ข้าวหมู (พิเศษ)', price: 70, cost: 43, profit: 27, icon: '🐽', type: 'rice' },
+{ id: 'r4', name: 'ข้าวไก่ (พิเศษ)', price: 70, cost: 40, profit: 30, icon: '🐔', type: 'rice' },
+{ id: 's1', name: 'กับข้าวหมู', price: 80, cost: 51, profit: 29, icon: '🥘', type: 'side' },
+{ id: 's2', name: 'กับข้าวไก่', price: 70, cost: 39, profit: 31, icon: '🥘', type: 'side' }
+];
+
+let cart = [];
+let dailyOrders = [];
+let isCartExpanded = false;
+let currentView = 'pos';
+
+window.onload = () => {
+renderMenu();
+loadFromLocalStorage();
+};
+
+function renderMenu() {
+const riceContainer = document.getElementById('rice-menu-container');
+const sideContainer = document.getElementById('side-menu-container');
+riceContainer.innerHTML = ''; sideContainer.innerHTML = '';
+
+menuItems.forEach(item => {
+const html = `
+<div onclick="addToCart('${item.id}')" class="menu-card bg-white border-2 border-brand-100 rounded-2xl p-4 text-center cursor-pointer shadow-sm hover:shadow-md flex flex-col items-center justify-between h-full select-none">
+<div class="text-4xl mb-2">${item.icon}</div>
+<div class="font-medium text-sm text-gray-700 leading-tight mb-2">${item.name}</div>
+<div class="text-brand-600 font-bold bg-brand-50 w-full rounded-lg py-1 mt-auto">฿${item.price}</div>
+</div>
+`;
+if (item.type === 'rice') riceContainer.innerHTML += html;
+else sideContainer.innerHTML += html;
+});
+}
+
+function addToCart(itemId) {
+const item = menuItems.find(m => m.id === itemId);
+if(item) {
+cart.push({...item, cartId: Date.now() + Math.random()});
+updateCartUI();
+const countBadge = document.getElementById('cart-count');
+countBadge.classList.add('scale-150');
+setTimeout(() => countBadge.classList.remove('scale-150'), 200);
+}
+}
+
+function removeFromCart(cartId) {
+cart = cart.filter(item => item.cartId !== cartId);
+updateCartUI();
+if(cart.length === 0) {
+isCartExpanded = false;
+document.getElementById('cart-items-container').classList.add('hidden');
+document.getElementById('toggle-cart-icon').innerText = '▲';
+}
+}
+
+function updateCartUI() {
+const list = document.getElementById('cart-list');
+list.innerHTML = '';
+let total = 0;
+
+cart.forEach(item => {
+total += item.price;
+list.innerHTML += `
+<li class="flex justify-between items-center py-2 animate-fade-in px-1">
+<div class="flex items-center gap-2">
+<span>${item.icon}</span>
+<span class="text-gray-700">${item.name}</span>
+</div>
+<div class="flex items-center gap-3">
+<span class="font-medium">฿${item.price}</span>
+<button onclick="removeFromCart(${item.cartId})" class="text-red-400 hover:text-red-600 p-1 bg-red-50 rounded-md">✖</button>
+</div>
+</li>`;
+});
+
+document.getElementById('cart-count').innerText = cart.length;
+document.getElementById('cart-total').innerText = total;
+document.getElementById('toggle-cart-btn').style.display = cart.length > 0 ? 'flex' : 'none';
+}
+
+function toggleCartItems() {
+if(cart.length === 0) return;
+isCartExpanded = !isCartExpanded;
+const container = document.getElementById('cart-items-container');
+const icon = document.getElementById('toggle-cart-icon');
+
+if(isCartExpanded) {
+container.classList.remove('hidden');
+icon.innerText = '▼';
+} else {
+container.classList.add('hidden');
+icon.innerText = '▲';
+}
+}
+
+// --- ระบบ Checkout Modal (ใส่ชื่อและเลือกสถานะชำระ) ---
+let currentCheckoutData = {};
+
+function openCheckoutModal() {
+if (cart.length === 0) {
+showAlert('แจ้งเตือน', '🌿 กรุณาเลือกเมนูก่อนยืนยันออเดอร์ครับ');
+return;
+}
+
+let totalSales = 0, totalCost = 0, totalProfit = 0;
+let summaryMap = {};
+let rawItems = [];
+
+cart.forEach(item => {
+totalSales += item.price;
+totalCost += item.cost;
+totalProfit += item.profit;
+rawItems.push({ id: item.id, name: item.name, price: item.price, cost: item.cost, profit: item.profit });
+
+if(summaryMap[item.name]) summaryMap[item.name]++;
+else summaryMap[item.name] = 1;
+});
+
+let orderNames = Object.keys(summaryMap).map(key => `${key} x${summaryMap[key]}`).join('\n');
+
+// เตรียมข้อมูลสำหรับบันทึก
+currentCheckoutData = {
+items: orderNames,
+rawItems: rawItems,
+sales: totalSales,
+cost: totalCost,
+profit: totalProfit
+};
+
+// อัปเดต UI ใน Modal
+document.getElementById('checkout-summary-text').innerText = orderNames;
+document.getElementById('checkout-total-price').innerText = totalSales;
+document.getElementById('customer-name').value = ''; // เคลียร์ชื่อลูกค้า
+document.getElementById('payment-toggle').checked = true; // ค่าเริ่มต้นคือ จ่ายแล้ว
+updatePaymentToggleText();
+
+// แสดง Modal แบบ Slide Up
+const modal = document.getElementById('checkout-modal');
+const content = document.getElementById('checkout-modal-content');
+modal.classList.remove('hidden');
+modal.classList.add('flex');
+
+setTimeout(() => {
+content.classList.remove('translate-y-full');
+content.classList.add('translate-y-0');
+}, 10);
+}
+
+function closeCheckoutModal() {
+const modal = document.getElementById('checkout-modal');
+const content = document.getElementById('checkout-modal-content');
+
+content.classList.remove('translate-y-0');
+content.classList.add('translate-y-full');
+
+setTimeout(() => {
+modal.classList.add('hidden');
+modal.classList.remove('flex');
+}, 300);
+}
+
+function updatePaymentToggleText() {
+const isPaid = document.getElementById('payment-toggle').checked;
+const textEl = document.getElementById('payment-status-text');
+if (isPaid) {
+textEl.innerText = 'ชำระเงินแล้ว 🟢';
+textEl.style.color = '#4CAF50';
+} else {
+textEl.innerText = 'ยังไม่ชำระ 🔴';
+textEl.style.color = '#F44336';
+}
+}
+
+function confirmOrder() {
+let customerName = document.getElementById('customer-name').value.trim() || 'ไม่ระบุชื่อ';
+let isPaid = document.getElementById('payment-toggle').checked;
+
+// เพิ่มเวลา, ชื่อ, และสถานะการชำระ ลงใน object ข้อมูล
+currentCheckoutData.time = new Date().toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit', second:'2-digit'});
+currentCheckoutData.customer = customerName;
+currentCheckoutData.isPaid = isPaid;
+currentCheckoutData.orderId = Date.now().toString(); // สร้าง ID ให้บิล
+
+dailyOrders.push(currentCheckoutData);
+saveToLocalStorage();
+
+cart = [];
+isCartExpanded = false;
+document.getElementById('cart-items-container').classList.add('hidden');
+document.getElementById('toggle-cart-icon').innerText = '▲';
+updateCartUI();
+
+closeCheckoutModal();
+
+setTimeout(() => {
+showAlert('สำเร็จ! 🎉', `บันทึกออเดอร์ของ <b>${customerName}</b> เรียบร้อยแล้ว`);
+}, 300);
+}
+
+
+// --- ระบบ Dashboard (ยอดขาย) ---
+function toggleView() {
+const posView = document.getElementById('pos-view');
+const dashView = document.getElementById('dashboard-view');
+const cartBar = document.getElementById('cart-bar');
+const toggleBtnText = document.getElementById('view-toggle-text');
+const subtitle = document.getElementById('header-subtitle');
+
+if (currentView === 'pos') {
+currentView = 'dashboard';
+posView.classList.add('hidden');
+dashView.classList.remove('hidden');
+cartBar.style.transform = 'translateY(150%)';
+toggleBtnText.innerText = 'หน้าแรก';
+subtitle.innerText = 'สรุปยอดขายและกำไร';
+renderDashboard();
+} else {
+currentView = 'pos';
+dashView.classList.add('hidden');
+posView.classList.remove('hidden');
+cartBar.style.transform = 'translateY(0)';
+toggleBtnText.innerText = 'ยอดขาย';
+subtitle.innerText = 'ระบบรับออเดอร์';
+}
+}
+
+function markAsPaid(orderId) {
+const orderIndex = dailyOrders.findIndex(o => o.orderId === orderId);
+if (orderIndex !== -1) {
+dailyOrders[orderIndex].isPaid = true;
+saveToLocalStorage();
+renderDashboard();
+}
+}
+
+function renderDashboard() {
+let totalPaidS = 0, totalPaidC = 0, totalPaidP = 0;
+let totalPendingS = 0;
+
+const historyContainer = document.getElementById('order-history');
+const emptyHistoryMsg = document.getElementById('empty-history');
+const itemSummaryList = document.getElementById('item-summary-list');
+const emptySummaryMsg = document.getElementById('empty-item-summary');
+
+historyContainer.innerHTML = '';
+itemSummaryList.innerHTML = '';
+
+let itemStats = {};
+
+if(dailyOrders.length === 0) {
+historyContainer.appendChild(emptyHistoryMsg);
+itemSummaryList.appendChild(emptySummaryMsg);
+emptyHistoryMsg.style.display = 'block';
+emptySummaryMsg.style.display = 'block';
+document.getElementById('pending-payment-box').classList.add('hidden');
+} else {
+emptyHistoryMsg.style.display = 'none';
+emptySummaryMsg.style.display = 'none';
+
+// --- 1. วาดประวัติบิล ---
+[...dailyOrders].reverse().forEach((order, index) => {
+
+// คำนวณยอดรวม (แยกจ่ายแล้ว กับ ยังไม่จ่าย)
+if(order.isPaid) {
+totalPaidS += order.sales;
+totalPaidC += order.cost;
+totalPaidP += order.profit;
+
+// รวบรวมสถิติแยกเมนู (นับเฉพาะที่จ่ายเงินแล้ว หรือถ้านับหมดเอา if ออก)
+if(order.rawItems) {
+order.rawItems.forEach(item => {
+if(!itemStats[item.id]) {
+itemStats[item.id] = { name: item.name, qty: 0, sales: 0, cost: 0, profit: 0 };
+}
+itemStats[item.id].qty += 1;
+itemStats[item.id].sales += item.price;
+itemStats[item.id].cost += item.cost;
+itemStats[item.id].profit += item.profit;
+});
+}
+} else {
+totalPendingS += order.sales;
+}
+
+let bno = dailyOrders.length - index;
+
+// UI ป้ายสถานะ และปุ่มอัปเดต
+let statusBadge = order.isPaid
+? `<span class="bg-green-100 text-green-700 text-[10px] px-2 py-1 rounded-md font-medium">ชำระแล้ว</span>`
+: `<span class="bg-red-100 text-red-600 text-[10px] px-2 py-1 rounded-md font-medium">รอชำระ</span>`;
+
+let updateBtn = !order.isPaid
+? `<button onclick="markAsPaid('${order.orderId}')" class="text-xs bg-brand-50 text-brand-600 border border-brand-200 px-3 py-1 rounded-lg hover:bg-brand-100 transition mt-2 w-full font-medium">✅ กดรับเงินแล้ว</button>`
+: '';
+
+historyContainer.innerHTML += `
+<div class="bg-white border ${order.isPaid ? 'border-gray-100' : 'border-red-200'} rounded-xl p-4 shadow-sm animate-slide-up" style="animation-delay: ${index * 0.05}s">
+<div class="flex justify-between items-center mb-2 border-b border-gray-50 pb-2">
+<div class="flex items-center gap-2">
+<span class="font-semibold text-brand-800 text-sm">บิล #${bno}</span>
+${statusBadge}
+</div>
+<span class="text-xs text-gray-400">🕒 ${order.time}</span>
+</div>
+
+<!-- ชื่อลูกค้า -->
+<div class="text-sm font-medium text-gray-800 mb-2 flex items-center gap-1">
+👤 ลูกค้า: <span class="text-brand-600">${order.customer}</span>
+</div>
+
+<div class="text-sm text-gray-600 whitespace-pre-line mb-3 pl-2 border-l-2 border-gray-200">${order.items}</div>
+
+<div class="flex justify-between items-end bg-gray-50 p-2 rounded-lg">
+<div class="text-[11px] text-gray-500">
+ทุน ฿${order.cost} | กำไร <span class="text-green-500 font-medium">฿${order.profit}</span>
+</div>
+<div class="font-bold text-gray-800">ยอด ฿${order.sales}</div>
+</div>
+
+${updateBtn}
+</div>
+`;
+});
+
+// --- 2. วาดสรุปยอดขายแยกตามเมนู ---
+let sortedItems = Object.values(itemStats).sort((a, b) => b.qty - a.qty);
+
+if (sortedItems.length === 0) {
+itemSummaryList.innerHTML = `<div class="text-center text-gray-400 text-sm py-6">ยังไม่มีข้อมูลการขาย (หรือยังไม่ชำระเงิน)</div>`;
+} else {
+sortedItems.forEach(stat => {
+itemSummaryList.innerHTML += `
+<div class="p-3 flex justify-between items-center hover:bg-gray-50 transition">
+<div>
+<div class="font-medium text-gray-800 text-sm">${stat.name}</div>
+<div class="text-xs text-gray-400 mt-1">ขายได้ <span class="font-semibold text-gray-600">${stat.qty}</span> จาน</div>
+</div>
+<div class="text-right">
+<div class="text-sm font-semibold text-brand-600">ยอด ฿${stat.sales}</div>
+<div class="text-[11px] text-green-500 font-medium mt-1">กำไร ฿${stat.profit}</div>
+</div>
+</div>
+`;
+});
+}
+}
+
+// อัปเดตตัวเลขยอดรวม (โชว์เฉพาะที่จ่ายแล้ว)
+document.getElementById('dash-total-sales').innerText = totalPaidS;
+document.getElementById('dash-total-cost').innerText = totalPaidC;
+document.getElementById('dash-total-profit').innerText = totalPaidP;
+document.getElementById('dash-order-count').innerText = dailyOrders.length;
+
+// จัดการแสดงกล่อง "ค้างชำระ"
+const pendingBox = document.getElementById('pending-payment-box');
+if (totalPendingS > 0) {
+pendingBox.classList.remove('hidden');
+document.getElementById('dash-pending-sales').innerText = totalPendingS;
+} else {
+pendingBox.classList.add('hidden');
+}
+}
+
+function clearHistory() {
+showAlert('ยืนยันการล้างข้อมูล', 'ต้องการล้างข้อมูลยอดขายของวันนี้ทั้งหมดใช่หรือไม่?\n(ข้อมูลจะไม่สามารถกู้คืนได้)', [
+{text: 'ยกเลิก', type: 'secondary', action: closeAlert},
+{text: 'ล้างข้อมูล', type: 'danger', action: () => {
+dailyOrders = [];
+saveToLocalStorage();
+renderDashboard();
+closeAlert();
+}}
+]);
+}
+
+// --- ระบบ Alert Modal (ทั่วไป) ---
+function showAlert(title, message, actions = [{text: 'ตกลง', type: 'primary', action: closeAlert}]) {
+const overlay = document.getElementById('alert-modal');
+const content = document.getElementById('alert-content');
+
+document.getElementById('alert-header').innerText = title;
+document.getElementById('alert-body').innerHTML = message;
+
+const actionContainer = document.getElementById('alert-actions');
+actionContainer.innerHTML = '';
+
+actions.forEach(btn => {
+const button = document.createElement('button');
+button.innerText = btn.text;
+button.className = 'w-full py-3 rounded-xl font-medium transition active:scale-95 text-sm mt-2 ';
+
+if(btn.type === 'primary') button.className += 'bg-brand-500 text-white hover:bg-brand-600 shadow-sm';
+else if(btn.type === 'danger') button.className += 'bg-red-500 text-white hover:bg-red-600 shadow-sm';
+else button.className += 'bg-gray-100 text-gray-700 hover:bg-gray-200';
+
+button.onclick = btn.action || closeAlert;
+actionContainer.appendChild(button);
+});
+
+overlay.classList.remove('hidden');
+overlay.classList.add('flex');
+
+setTimeout(() => {
+content.classList.remove('scale-95', 'opacity-0');
+content.classList.add('scale-100', 'opacity-100');
+}, 10);
+}
+
+function closeAlert() {
+const overlay = document.getElementById('alert-modal');
+const content = document.getElementById('alert-content');
+
+content.classList.remove('scale-100', 'opacity-100');
+content.classList.add('scale-95', 'opacity-0');
+
+setTimeout(() => {
+overlay.classList.add('hidden');
+overlay.classList.remove('flex');
+}, 200);
+}
+
+function saveToLocalStorage() {
+localStorage.setItem('kruabaimai_orders', JSON.stringify(dailyOrders));
+}
+
+function loadFromLocalStorage() {
+const saved = localStorage.getItem('kruabaimai_orders');
+if(saved) {
+dailyOrders = JSON.parse(saved);
+}
+}
+</script>
+</body>
+</html>
